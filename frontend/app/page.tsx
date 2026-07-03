@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { RadialBarChart, RadialBar, PolarAngleAxis, ResponsiveContainer } from "recharts";
 
 interface Detalhe { nota: number; classificacao: string; }
@@ -18,19 +18,50 @@ interface MensagemChat {
   content: string;
 }
 
+// Definição das etapas da barra de progresso
+const ETAPAS_AGENTES = [
+  { id: 1, nome: "Coletando Dados" },
+  { id: 2, nome: "Calculando Indicadores" },
+  { id: 3, nome: "Gerando Análise IA" },
+  { id: 4, nome: "Concluído" }
+];
+
 export default function Home() {
   const [ticker, setTicker] = useState("");
   const [loading, setLoading] = useState(false);
   const [analise, setAnalise] = useState<AnaliseResponse | null>(null);
   const [erro, setErro] = useState("");
 
+  // Estado da barra de progresso (0 = oculta, 1 a 4 = etapas)
+  const [etapaAtual, setEtapaAtual] = useState(0);
+
   // Estados do Chat
   const [pergunta, setPergunta] = useState("");
   const [chatHistorico, setChatHistorico] = useState<MensagemChat[]>([]);
   const [chatLoading, setChatLoading] = useState(false);
 
-  // Validação simples: tem que ter pelo menos 4 caracteres e não pode ser só espaço
   const isTickerValido = ticker.trim().length >= 4;
+
+  // Efeito para simular o avanço dos agentes enquanto a API processa
+  useEffect(() => {
+    let timer1: any, timer2: any, timer3: any;
+    
+    if (loading) {
+      setEtapaAtual(1); // Inicia na etapa 1
+      timer1 = setTimeout(() => setEtapaAtual(2), 800);  // Vai pra etapa 2 em 0.8s
+      timer2 = setTimeout(() => setEtapaAtual(3), 2000); // Vai pra etapa 3 em 2.0s
+    } else {
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+      clearTimeout(timer3);
+    }
+
+    return () => {
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+      clearTimeout(timer3);
+    };
+  }, [loading]);
 
   const buscarAnalise = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,30 +74,46 @@ export default function Home() {
     setLoading(true);
     setAnalise(null);
     setErro("");
-    setChatHistorico([]); // Limpa o chat a cada nova análise
+    setChatHistorico([]);
 
-       try {
+    try {
       const response = await fetch(`http://127.0.0.1:8000/analisar/${ticker.trim().toUpperCase()}`);
       
-      // Se a API retornar erro (ex: 404 Ticker não encontrado)
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.detail || "Não foi possível concluir a análise.");
       }
       
       const data = await response.json();
-      setAnalise(data);
+      
+      // Quando a API responde, pulamos direto para a etapa final
+      setEtapaAtual(4);
+      
+      // Tempo para o usuário ver o "Concluído" antes de a barra sumir lentamente
+      setTimeout(() => {
+        setEtapaAtual(0);
+        setAnalise(data);
+      }, 1000);
+      
     } catch (err: any) {
-      // Se o erro for de conexão (servidor off), usamos uma mensagem amigável
+      setEtapaAtual(0);
       if (err.message === "Failed to fetch") {
         setErro("Ocorreu um erro de conexão. Tente novamente em alguns instantes.");
       } else {
-        // Mostra a mensagem amigável que veio do Backend (ex: "O ticker PETR5 não foi encontrado...")
         setErro(err.message);
       }
     } finally {
       setLoading(false);
     }
+  };
+
+  const limparTudo = () => {
+    setTicker("");
+    setAnalise(null);
+    setErro("");
+    setChatHistorico([]);
+    setPergunta("");
+    setEtapaAtual(0);
   };
 
   const enviarPergunta = async (textoPergunta: string) => {
@@ -148,10 +195,59 @@ export default function Home() {
           >
             {loading ? "Analisando..." : "Analisar"}
           </button>
+          
+          {(analise || ticker) && (
+            <button 
+              type="button" 
+              onClick={limparTudo} 
+              className="px-6 py-4 bg-white border border-slate-200 text-slate-600 font-medium rounded-xl hover:bg-slate-100 hover:text-slate-900 transition-colors shadow-sm"
+            >
+              Limpar
+            </button>
+          )}
         </form>
         
-        {/* Mensagem de erro de validação */}
         {erro && <p className="text-rose-500 text-center text-sm mb-4 max-w-xl mx-auto">{erro}</p>}
+
+        {/* BARRA DE PROGRESSO DOS AGENTES COM FADE OUT SLOW */}
+        <AnimatePresence>
+          {etapaAtual > 0 && (
+            <motion.div 
+              className="max-w-xl mx-auto mb-8 bg-white p-6 rounded-2xl shadow-sm border border-slate-100 overflow-hidden"
+              initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+              animate={{ opacity: 1, height: "auto", marginBottom: 32 }}
+              exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+              transition={{ duration: 1, ease: "easeInOut" }}
+            >
+              <div className="flex justify-between items-center relative">
+                {/* Linha de fundo da barra */}
+                <div className="absolute top-5 left-0 w-full h-1 bg-slate-100 rounded-full -z-0">
+                  <motion.div 
+                    className="h-full bg-emerald-500 rounded-full"
+                    initial={{ width: "0%" }}
+                    animate={{ width: `${((etapaAtual - 1) / (ETAPAS_AGENTES.length - 1)) * 100}%` }}
+                    transition={{ duration: 0.5 }}
+                  />
+                </div>
+
+                {ETAPAS_AGENTES.map((etapa) => (
+                  <div key={etapa.id} className="flex flex-col items-center relative z-10 w-1/4">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${
+                      etapaAtual > etapa.id ? 'bg-emerald-500 border-emerald-500 text-white' : 
+                      etapaAtual === etapa.id ? 'bg-slate-900 border-slate-900 text-white scale-110' : 
+                      'bg-white border-slate-200 text-slate-400'
+                    }`}>
+                      {etapaAtual > etapa.id ? '✓' : etapa.id}
+                    </div>
+                    <span className={`mt-2 text-xs font-medium text-center transition-colors ${etapaAtual >= etapa.id ? 'text-slate-900' : 'text-slate-400'}`}>
+                      {etapa.nome}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {analise && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -222,7 +318,6 @@ export default function Home() {
                     <button onClick={() => enviarPergunta("Vale a pena comprar?")} className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-full transition-colors">Vale a pena comprar?</button>
                   </div>
 
-                  {/* Histórico do Chat */}
                   <div className="space-y-3 mb-4 max-h-60 overflow-y-auto">
                     {chatHistorico.map((msg, index) => (
                       <div key={index} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
@@ -238,7 +333,6 @@ export default function Home() {
                     )}
                   </div>
 
-                  {/* Input do Chat */}
                   <form onSubmit={(e) => { e.preventDefault(); enviarPergunta(pergunta); }} className="relative">
                     <input type="text" value={pergunta} onChange={(e) => setPergunta(e.target.value)} placeholder="Faça sua pergunta..." className="w-full p-3 pr-10 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:outline-none text-sm text-slate-900" />
                     <button type="submit" disabled={chatLoading} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-900 disabled:text-slate-300">➤</button>
