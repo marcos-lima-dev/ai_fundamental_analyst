@@ -1,52 +1,92 @@
-import yfinance as yf
+import requests
+from bs4 import BeautifulSoup
 import json
-from curl_cffi import requests as cffi_requests
 
 class AgenteColetor:
     def __init__(self):
         pass
 
+    def _limpar_valor(self, texto):
+        """Converte texto do Fundamentus (ex: '4,67', '10,30%') para número (4.67, 10.30)"""
+        if not texto or texto == '-' or texto == 'N/A':
+            return None
+        # Remove pontos de milhar, troca vírgula por ponto e remove o símbolo de %
+        texto = texto.replace('.', '').replace(',', '.').replace('%', '')
+        try:
+            return float(texto)
+        except ValueError:
+            return None
+
     def buscar_dados(self, ticker: str) -> dict:
-        if not ticker.upper().endswith(".SA"):
-            ticker_yf = f"{ticker}.SA"
-        else:
-            ticker_yf = ticker
+        ticker = ticker.upper()
+        url = f"https://www.fundamentus.com.br/detalhes.php?papel={ticker}"
+        
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        }
 
         try:
-            print(f"🔍 Agente 1: Buscando dados para {ticker_yf} no Yahoo Finance...")
+            print(f"🔍 Agente 1: Buscando dados para {ticker} no Fundamentus...")
+            response = requests.get(url, headers=headers, timeout=10)
             
-            # PLANO C: Usar curl_cffi para "fingir" ser um Chrome real e burlar o 429 do Yahoo
-            session = cffi_requests.Session(impersonate="chrome")
-            
-            acao = yf.Ticker(ticker_yf, session=session)
-            info = acao.info
-            
-            if not info or info.get("longName") is None or info.get("regularMarketPrice") is None:
-                print(f"❌ Agente 1: Ticker {ticker} não encontrado ou sem dados na bolsa.")
+            if response.status_code != 200:
+                print(f"❌ Agente 1: Erro {response.status_code} ao acessar Fundamentus.")
                 return None
-            
-            dados_extraidos = {
-                "ticker": ticker.upper(),
-                "nome": info.get("longName", info.get("shortName", ticker)),
-                "setor": info.get("sector", "N/A"),
-                "pl": info.get("trailingPE", None),
-                "pvp": info.get("priceToBook", None),
-                "ev_ebitda": info.get("enterpriseToEbitda", None),
-                "roe": info.get("returnOnEquity", None),
-                "roic": info.get("returnOnCapital", None),
-                "margem_liquida": info.get("profitMargins", None),
-                "divida_liquida_ebitda": info.get("debtToEquity", None), 
-                "dividend_yield": info.get("dividendYield", None),
-                "crescimento_receita_5a": info.get("revenueGrowth", None),
-                "crescimento_lucro_5a": info.get("earningsGrowth", None)
-            }
 
-            chaves_percentuais = ["roe", "margem_liquida", "dividend_yield", "crescimento_receita_5a", "crescimento_lucro_5a"]
-            for key in chaves_percentuais:
-                valor = dados_extraidos[key]
-                if valor is not None and isinstance(valor, (int, float)):
-                    if valor < 1:
-                        dados_extraidos[key] = round(valor * 100, 2)
+            soup = BeautifulSoup(response.text, 'html.parser')
+            table = soup.find('table', {'class': 'w728'})
+            
+            if not table:
+                print(f"❌ Agente 1: Ticker {ticker} não encontrado no Fundamentus.")
+                return None
+
+            dados_brutos = {}
+            # O Fundamentus usa tabelas com 4 colunas (label, valor, label, valor)
+            for row in table.find_all('tr'):
+                cells = row.find_all('td')
+                if len(cells) == 4:
+                    label1 = cells[0].text.strip()
+                    value1 = cells[1].text.strip()
+                    label2 = cells[2].text.strip()
+                    value2 = cells[3].text.strip()
+                    dados_brutos[label1] = value1
+                    dados_brutos[label2] = value2
+                elif len(cells) == 2:
+                    label1 = cells[0].text.strip()
+                    value1 = cells[1].text.strip()
+                    dados_brutos[label1] = value1
+
+            # Validando se o ticker digitado é o mesmo que apareceu na tela
+            if "Papel" not in dados_brutos or dados_brutos.get("Papel") != ticker:
+                print(f"❌ Agente 1: Ticker {ticker} inválido.")
+                return None
+
+            # Mapeando os nomes do Fundamentus para o nosso padrão
+            dados_extraidos = {
+                "ticker": ticker,
+                "nome": dados_brutos.get("Empresa", ticker),
+                "setor": dados_brutos.get("Setor", "N/A"),
+                
+                # Valuation
+                "pl": self._limpar_valor(dados_brutos.get("P/L")),
+                "pvp": self._limpar_valor(dados_brutos.get("P/VP")),
+                "ev_ebitda": self._limpar_valor(dados_brutos.get("EV/EBITDA")),
+                
+                # Rentabilidade
+                "roe": self._limpar_valor(dados_brutos.get("ROE")),
+                "roic": self._limpar_valor(dados_brutos.get("ROIC")),
+                "margem_liquida": self._limpar_valor(dados_brutos.get("Marg. Líquida")),
+                
+                # Endividamento (Dív.Br/Patrim é equivalente ao Debt/Equity que usávamos)
+                "divida_liquida_ebitda": self._limpar_valor(dados_brutos.get("Dív.Br/Patrim")),
+                
+                # Dividendos
+                "dividend_yield": self._limpar_valor(dados_brutos.get("Div.Yield")),
+                
+                # Crescimento
+                "crescimento_receita_5a": self._limpar_valor(dados_brutos.get("Cres. Rec (5a)")),
+                "crescimento_lucro_5a": self._limpar_valor(dados_brutos.get("Cres. Luc (5a)"))
+            }
 
             print(f"✅ Agente 1: Dados de {ticker} coletados com sucesso!")
             return dados_extraidos
@@ -57,8 +97,6 @@ class AgenteColetor:
 
 if __name__ == "__main__":
     coletor = AgenteColetor()
-    ticker_teste = "PETR4"
-    dados = coletor.buscar_dados(ticker_teste)
+    dados = coletor.buscar_dados("PETR4")
     if dados:
-        print("\n--- Dados Extraídos ---")
         print(json.dumps(dados, indent=4, ensure_ascii=False))
