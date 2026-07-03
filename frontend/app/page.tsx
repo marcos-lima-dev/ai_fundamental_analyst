@@ -29,21 +29,41 @@ export default function Home() {
   const [chatHistorico, setChatHistorico] = useState<MensagemChat[]>([]);
   const [chatLoading, setChatLoading] = useState(false);
 
+  // Validação simples: tem que ter pelo menos 4 caracteres e não pode ser só espaço
+  const isTickerValido = ticker.trim().length >= 4;
+
   const buscarAnalise = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!ticker) return;
+    
+    if (!isTickerValido) {
+      setErro("Digite um ticker válido (mínimo 4 letras). Ex: PETR4");
+      return;
+    }
+
     setLoading(true);
     setAnalise(null);
     setErro("");
     setChatHistorico([]); // Limpa o chat a cada nova análise
 
-    try {
-      const response = await fetch(`http://127.0.0.1:8000/analisar/${ticker.toUpperCase()}`);
-      if (!response.ok) throw new Error("Ticker não encontrado");
+       try {
+      const response = await fetch(`http://127.0.0.1:8000/analisar/${ticker.trim().toUpperCase()}`);
+      
+      // Se a API retornar erro (ex: 404 Ticker não encontrado)
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || "Não foi possível concluir a análise.");
+      }
+      
       const data = await response.json();
       setAnalise(data);
-    } catch (err) {
-      setErro("Erro ao buscar. Verifique o ticker e se a API está online.");
+    } catch (err: any) {
+      // Se o erro for de conexão (servidor off), usamos uma mensagem amigável
+      if (err.message === "Failed to fetch") {
+        setErro("Ocorreu um erro de conexão. Tente novamente em alguns instantes.");
+      } else {
+        // Mostra a mensagem amigável que veio do Backend (ex: "O ticker PETR5 não foi encontrado...")
+        setErro(err.message);
+      }
     } finally {
       setLoading(false);
     }
@@ -113,12 +133,25 @@ export default function Home() {
           </div>
         </header>
 
-        <form onSubmit={buscarAnalise} className="flex gap-2 mb-8 max-w-xl mx-auto">
-          <input type="text" value={ticker} onChange={(e) => setTicker(e.target.value)} placeholder="Digite o ticker (ex: PETR4)" className="flex-1 p-4 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:outline-none uppercase text-gray-900 shadow-sm font-medium" />
-          <button type="submit" disabled={loading} className="px-8 py-4 bg-slate-900 text-white font-medium rounded-xl hover:bg-slate-800 disabled:bg-slate-400 transition-colors shadow-sm">{loading ? "Analisando..." : "Analisar"}</button>
+        <form onSubmit={buscarAnalise} className="flex flex-col sm:flex-row gap-2 mb-4 max-w-xl mx-auto">
+          <input
+            type="text"
+            value={ticker}
+            onChange={(e) => setTicker(e.target.value)}
+            placeholder="Digite o ticker (ex: PETR4)"
+            className="flex-1 p-4 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:outline-none uppercase text-gray-900 shadow-sm font-medium"
+          />
+          <button 
+            type="submit" 
+            disabled={loading || !isTickerValido} 
+            className="px-8 py-4 bg-slate-900 text-white font-medium rounded-xl hover:bg-slate-800 disabled:bg-slate-400 disabled:cursor-not-allowed transition-colors shadow-sm"
+          >
+            {loading ? "Analisando..." : "Analisar"}
+          </button>
         </form>
-
-        {erro && <p className="text-rose-500 text-center mb-4">{erro}</p>}
+        
+        {/* Mensagem de erro de validação */}
+        {erro && <p className="text-rose-500 text-center text-sm mb-4 max-w-xl mx-auto">{erro}</p>}
 
         {analise && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

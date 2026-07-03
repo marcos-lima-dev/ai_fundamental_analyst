@@ -20,6 +20,11 @@ class AgenteColetor:
             acao = yf.Ticker(ticker_yf)
             info = acao.info
             
+            # VALIDAÇÃO: Se a API não retornou o nome da empresa ou o preço atual, o ticker não existe!
+            if not info or info.get("longName") is None or info.get("regularMarketPrice") is None:
+                print(f"❌ Agente 1: Ticker {ticker} não encontrado ou sem dados na bolsa.")
+                return None
+            
             # Extraímos os dados do dicionário 'info' do Yahoo
             # Usamos .get() para não quebrar se algum dado não existir
             dados_extraidos = {
@@ -68,9 +73,12 @@ class AgenteColetor:
 # Bloco de teste
 if __name__ == "__main__":
     coletor = AgenteColetor()
-    ticker_teste = "PETR4"
+    # Teste com um ticker inexistente para ver a validação funcionando
+    ticker_teste = "PETR5"
     dados = coletor.buscar_dados(ticker_teste)
     
     if dados:
         print("\n--- Dados Extraídos ---")
         print(json.dumps(dados, indent=4, ensure_ascii=False))
+    else:
+        print("\nFalha ao extrair dados. Ticker inválido.")
