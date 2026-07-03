@@ -77,7 +77,8 @@ export default function Home() {
     setChatHistorico([]);
 
     try {
-      const response = await fetch(`http://127.0.0.1:8000/analisar/${ticker.trim().toUpperCase()}`);
+      
+      const response = await fetch(`https://ai-fundamental-api.onrender.com/analisar/${ticker.trim().toUpperCase()}`);
       
       if (!response.ok) {
         const errorData = await response.json();
@@ -125,7 +126,7 @@ export default function Home() {
     setPergunta("");
 
     try {
-      const response = await fetch("http://127.0.0.1:8000/chat", {
+      const response = await fetch("https://ai-fundamental-api.onrender.com/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ pergunta: textoPergunta, dados_avaliados: analise })
