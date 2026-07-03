@@ -1,6 +1,6 @@
 import yfinance as yf
 import json
-import requests
+from curl_cffi import requests as cffi_requests
 
 class AgenteColetor:
     def __init__(self):
@@ -15,17 +15,14 @@ class AgenteColetor:
         try:
             print(f"🔍 Agente 1: Buscando dados para {ticker_yf} no Yahoo Finance...")
             
-            # TRUQUE DE DISFARCE: Criamos uma sessão com cabeçalho de navegador para o Yahoo não bloquear
-            session = requests.Session()
-            session.headers.update({
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-            })
+            # PLANO C: Usar curl_cffi para "fingir" ser um Chrome real e burlar o 429 do Yahoo
+            session = cffi_requests.Session(impersonate="chrome")
             
             acao = yf.Ticker(ticker_yf, session=session)
             info = acao.info
             
             if not info or info.get("longName") is None or info.get("regularMarketPrice") is None:
-                print(f"❌ Agente 1: Ticker {ticker} não encontrado ou bloqueado pelo Yahoo.")
+                print(f"❌ Agente 1: Ticker {ticker} não encontrado ou sem dados na bolsa.")
                 return None
             
             dados_extraidos = {
