@@ -1,6 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
 import json
+import re
 
 class AgenteColetor:
     def __init__(self):
@@ -10,7 +11,6 @@ class AgenteColetor:
         """Converte texto do Fundamentus (ex: '4,67', '10,30%') para número (4.67, 10.30)"""
         if not texto or texto in ['-', 'N/A', '']:
             return None
-        # Remove pontos de milhar, troca vírgula por ponto e remove o símbolo de %
         texto = str(texto).replace('.', '').replace(',', '.').replace('%', '').strip()
         try:
             return float(texto)
@@ -35,7 +35,6 @@ class AgenteColetor:
 
             soup = BeautifulSoup(response.text, 'html.parser')
             
-            # NOVA LÓGICA ROBUSTA: Encontrar todas as células que são rótulos (labels)
             labels = soup.find_all('td', class_='label')
             if not labels:
                 print(f"❌ Agente 1: Ticker {ticker} não encontrado ou site mudou de estrutura.")
@@ -43,16 +42,16 @@ class AgenteColetor:
 
             dados_brutos = {}
             for label_td in labels:
-                # O texto do rótulo
-                label = label_td.get_text(strip=True).replace('\xa0', ' ')
-                # O valor está na próxima célula irmã (td)
+                # TRUQUE MESTRE: Remove todos os espaços e pontos do texto da etiqueta!
+                # Ex: "Div. Yield" vira "DivYield", "Marg. Líquida" vira "MargLíquida"
+                label = re.sub(r'[.\s]', '', label_td.get_text(strip=True).replace('\xa0', ' '))
                 value_td = label_td.find_next_sibling('td')
                 if value_td:
                     value = value_td.get_text(strip=True).replace('\xa0', ' ')
                     dados_brutos[label] = value
 
-            # Tratamento do Endividamento (Fundamentus manda como ratio ex: 0.83, multiplicamos por 100 para bater com as regras do Agente 3)
-            divida_ratio = self._limpar_valor(dados_brutos.get("Dív.Br/Patrim"))
+            # Tratamento do Endividamento (Fundamentus manda como ratio ex: 0.83, multiplicamos por 100)
+            divida_ratio = self._limpar_valor(dados_brutos.get("DívBruta/Patrim"))
             divida_percent = divida_ratio * 100 if divida_ratio is not None else None
 
             dados_extraidos = {
@@ -60,7 +59,7 @@ class AgenteColetor:
                 "nome": dados_brutos.get("Empresa", ticker),
                 "setor": dados_brutos.get("Setor", "N/A"),
                 
-                # Valuation
+                # Valuation (Buscando as chaves agora sem espaços/pontos)
                 "pl": self._limpar_valor(dados_brutos.get("P/L")),
                 "pvp": self._limpar_valor(dados_brutos.get("P/VP")),
                 "ev_ebitda": self._limpar_valor(dados_brutos.get("EV/EBITDA")),
@@ -68,17 +67,17 @@ class AgenteColetor:
                 # Rentabilidade
                 "roe": self._limpar_valor(dados_brutos.get("ROE")),
                 "roic": self._limpar_valor(dados_brutos.get("ROIC")),
-                "margem_liquida": self._limpar_valor(dados_brutos.get("Marg. Líquida")),
+                "margem_liquida": self._limpar_valor(dados_brutos.get("MargLíquida")),
                 
                 # Endividamento
                 "divida_liquida_ebitda": divida_percent,
                 
                 # Dividendos
-                "dividend_yield": self._limpar_valor(dados_brutos.get("Div.Yield")),
+                "dividend_yield": self._limpar_valor(dados_brutos.get("DivYield")),
                 
                 # Crescimento
-                "crescimento_receita_5a": self._limpar_valor(dados_brutos.get("Cres. Rec (5a)")),
-                "crescimento_lucro_5a": self._limpar_valor(dados_brutos.get("Cres. Luc (5a)"))
+                "crescimento_receita_5a": self._limpar_valor(dados_brutos.get("CresRec(5a)")),
+                "crescimento_lucro_5a": self._limpar_valor(dados_brutos.get("CresLuc(5a)"))
             }
 
             print(f"✅ Agente 1: Dados de {ticker} coletados com sucesso!")
