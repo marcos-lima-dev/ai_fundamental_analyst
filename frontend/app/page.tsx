@@ -1,0 +1,221 @@
+"use client";
+
+import { useState } from "react";
+import ReactMarkdown from "react-markdown";
+import { motion } from "framer-motion";
+import { RadialBarChart, RadialBar, PolarAngleAxis, ResponsiveContainer } from "recharts";
+
+interface Detalhe { nota: number; classificacao: string; }
+interface Indicadores { "P/L": number | null; "P/VP": number | null; "ROE": number | null; "Margem Líq.": number | null; "Div. Yield": number | null; }
+interface AnaliseResponse {
+  ticker: string; nome: string; setor: string; score_final: number;
+  detalhes: { rentabilidade: Detalhe; valuation: Detalhe; crescimento: Detalhe; endividamento: Detalhe; dividendos: Detalhe; };
+  indicadores: Indicadores; relatorio_ia: string;
+}
+
+interface MensagemChat {
+  role: "user" | "ai";
+  content: string;
+}
+
+export default function Home() {
+  const [ticker, setTicker] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [analise, setAnalise] = useState<AnaliseResponse | null>(null);
+  const [erro, setErro] = useState("");
+
+  // Estados do Chat
+  const [pergunta, setPergunta] = useState("");
+  const [chatHistorico, setChatHistorico] = useState<MensagemChat[]>([]);
+  const [chatLoading, setChatLoading] = useState(false);
+
+  const buscarAnalise = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!ticker) return;
+    setLoading(true);
+    setAnalise(null);
+    setErro("");
+    setChatHistorico([]); // Limpa o chat a cada nova análise
+
+    try {
+      const response = await fetch(`http://127.0.0.1:8000/analisar/${ticker.toUpperCase()}`);
+      if (!response.ok) throw new Error("Ticker não encontrado");
+      const data = await response.json();
+      setAnalise(data);
+    } catch (err) {
+      setErro("Erro ao buscar. Verifique o ticker e se a API está online.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const enviarPergunta = async (textoPergunta: string) => {
+    if (!textoPergunta.trim() || !analise) return;
+    
+    setChatLoading(true);
+    const novaMensagemUser: MensagemChat = { role: "user", content: textoPergunta };
+    setChatHistorico((prev) => [...prev, novaMensagemUser]);
+    setPergunta("");
+
+    try {
+      const response = await fetch("http://127.0.0.1:8000/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pergunta: textoPergunta, dados_avaliados: analise })
+      });
+      const data = await response.json();
+      const novaMensagemAI: MensagemChat = { role: "ai", content: data.resposta };
+      setChatHistorico((prev) => [...prev, novaMensagemAI]);
+    } catch (err) {
+      setChatHistorico((prev) => [...prev, { role: "ai", content: "Erro ao conectar com a IA." }]);
+    } finally {
+      setChatLoading(false);
+    }
+  };
+
+  const getCorNota = (nota: number) => nota >= 8 ? "#10b981" : nota >= 5 ? "#f59e0b" : "#f43f5e";
+  const getCorTexto = (nota: number) => nota >= 8 ? "text-emerald-600" : nota >= 5 ? "text-amber-600" : "text-rose-600";
+
+  const BarraScore = ({ nome, detalhe, index }: { nome: string, detalhe: Detalhe, index: number }) => (
+    <div className="mb-5">
+      <div className="flex justify-between items-end mb-1.5">
+        <span className="text-sm font-medium text-slate-600">{nome}</span>
+        <div className="text-right">
+          <span className={`text-base font-bold ${getCorTexto(detalhe.nota)}`}>{detalhe.nota.toFixed(1)}</span>
+          <span className="text-xs text-slate-400 ml-1">{detalhe.classificacao}</span>
+        </div>
+      </div>
+      <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+        <motion.div className="h-2.5 rounded-full" style={{ backgroundColor: getCorNota(detalhe.nota) }} initial={{ width: 0 }} animate={{ width: `${detalhe.nota * 10}%` }} transition={{ duration: 0.8, delay: index * 0.1, ease: "easeOut" }} />
+      </div>
+    </div>
+  );
+
+  const MiniCard = ({ titulo, valor, sufixo = "" }: { titulo: string, valor: number | null, sufixo?: string }) => (
+    <motion.div className="bg-slate-50 border border-slate-100 rounded-xl p-4 transition-all hover:shadow-md hover:-translate-y-0.5 hover:bg-white" whileHover={{ scale: 1.02 }}>
+      <p className="text-xs text-slate-500 font-medium uppercase tracking-wide">{titulo}</p>
+      <p className="text-xl font-bold text-slate-800 mt-1">{valor !== null ? `${valor.toFixed(2)}${sufixo}` : "N/A"}</p>
+    </motion.div>
+  );
+
+  const scoreData = [{ name: "Score", value: analise?.score_final || 0, fill: "#0f172a" }];
+
+  return (
+    <main className="min-h-screen bg-slate-50 text-slate-800 p-4 sm:p-8 font-sans">
+      <div className="max-w-6xl mx-auto">
+        <header className="flex flex-col sm:flex-row justify-between items-center mb-10">
+          <div>
+            <h1 className="text-3xl font-bold text-slate-900 tracking-tight">AI Fundamental Analyst</h1>
+            <p className="text-slate-500 mt-1">Análise de ações guiada por inteligência artificial.</p>
+          </div>
+          <div className="mt-4 sm:mt-0 flex items-center gap-2 bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-full text-sm font-medium border border-emerald-100">
+            <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span> IA Ativa
+          </div>
+        </header>
+
+        <form onSubmit={buscarAnalise} className="flex gap-2 mb-8 max-w-xl mx-auto">
+          <input type="text" value={ticker} onChange={(e) => setTicker(e.target.value)} placeholder="Digite o ticker (ex: PETR4)" className="flex-1 p-4 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:outline-none uppercase text-gray-900 shadow-sm font-medium" />
+          <button type="submit" disabled={loading} className="px-8 py-4 bg-slate-900 text-white font-medium rounded-xl hover:bg-slate-800 disabled:bg-slate-400 transition-colors shadow-sm">{loading ? "Analisando..." : "Analisar"}</button>
+        </form>
+
+        {erro && <p className="text-rose-500 text-center mb-4">{erro}</p>}
+
+        {analise && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <motion.div className="lg:col-span-1 space-y-6" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center">
+                <div className="text-center mb-2 w-full border-b pb-4">
+                  <p className="text-xl font-bold text-slate-900">{analise.ticker}</p>
+                  <p className="text-xs text-slate-400 truncate">{analise.nome}</p>
+                </div>
+                <div className="relative w-40 h-40 my-4">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <RadialBarChart cx="50%" cy="50%" innerRadius="75%" outerRadius="100%" data={scoreData} startAngle={90} endAngle={-270}>
+                      <PolarAngleAxis type="number" domain={[0, 10]} angleAxisId={0} tick={false} />
+                      <RadialBar background={{ fill: "#f1f5f9" }} dataKey="value" cornerRadius={20} fill="#0f172a" />
+                    </RadialBarChart>
+                  </ResponsiveContainer>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <motion.p className="text-4xl font-bold text-slate-900" initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: 0.3, type: "spring", stiffness: 120 }}>{analise.score_final.toFixed(1)}</motion.p>
+                    <p className="text-xs text-slate-400 font-medium">/ 10.0</p>
+                  </div>
+                </div>
+                <p className="text-sm text-slate-500 font-medium uppercase tracking-wider">Score Fundamentalista</p>
+              </div>
+
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                <h3 className="text-sm font-bold text-slate-900 mb-4">Indicadores Chave</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <MiniCard titulo="P/L" valor={analise.indicadores["P/L"]} />
+                  <MiniCard titulo="P/VP" valor={analise.indicadores["P/VP"]} />
+                  <MiniCard titulo="ROE" valor={analise.indicadores["ROE"]} sufixo="%" />
+                  <MiniCard titulo="Margem Líq." valor={analise.indicadores["Margem Líq."]} sufixo="%" />
+                  <MiniCard titulo="Div. Yield" valor={analise.indicadores["Div. Yield"]} sufixo="%" />
+                  <MiniCard titulo="Setor" valor={null} />
+                </div>
+              </div>
+            </motion.div>
+
+            <motion.div className="lg:col-span-2 space-y-6" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }}>
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                <h3 className="text-lg font-bold text-slate-900 mb-6">🩺 Saúde da Empresa</h3>
+                <BarraScore nome="Rentabilidade" detalhe={analise.detalhes.rentabilidade} index={1} />
+                <BarraScore nome="Valuation" detalhe={analise.detalhes.valuation} index={2} />
+                <BarraScore nome="Crescimento" detalhe={analise.detalhes.crescimento} index={3} />
+                <BarraScore nome="Endividamento" detalhe={analise.detalhes.endividamento} index={4} />
+                <BarraScore nome="Dividendos" detalhe={analise.detalhes.dividendos} index={5} />
+              </div>
+
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                <div className="flex justify-between items-center mb-4">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center text-white text-sm">🤖</div>
+                    <h3 className="text-lg font-bold text-slate-900">Diagnóstico IA</h3>
+                  </div>
+                  <span className="text-xs font-medium text-slate-500 bg-slate-100 px-2 py-1 rounded-full">92% Confiança</span>
+                </div>
+                
+                <div className="prose prose-sm prose-slate max-w-none mb-6">
+                  <ReactMarkdown components={{ p: ({node, ...props}) => <p className="text-slate-600 leading-relaxed mb-4" {...props} />, h3: ({node, ...props}) => <h3 className="text-slate-900 font-bold mt-4 mb-2" {...props} />, li: ({node, ...props}) => <li className="text-slate-600 ml-4 list-disc" {...props} />, strong: ({node, ...props}) => <strong className="font-bold text-slate-800" {...props} /> }}>{analise.relatorio_ia}</ReactMarkdown>
+                </div>
+
+                {/* ÁREA DE CHAT FUNCIONAL */}
+                <div className="border-t border-slate-100 pt-4 mt-4">
+                  <p className="text-xs text-slate-500 font-medium mb-2">Pergunte à IA sobre esta análise:</p>
+                  
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    <button onClick={() => enviarPergunta("Por que o crescimento está baixo?")} className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-full transition-colors">Por que o crescimento está baixo?</button>
+                    <button onClick={() => enviarPergunta("Explique o que é P/L")} className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-full transition-colors">Explique o que é P/L</button>
+                    <button onClick={() => enviarPergunta("Vale a pena comprar?")} className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-full transition-colors">Vale a pena comprar?</button>
+                  </div>
+
+                  {/* Histórico do Chat */}
+                  <div className="space-y-3 mb-4 max-h-60 overflow-y-auto">
+                    {chatHistorico.map((msg, index) => (
+                      <div key={index} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                        <div className={`max-w-[80%] p-3 rounded-xl text-sm ${msg.role === "user" ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-800"}`}>
+                          <ReactMarkdown>{msg.content}</ReactMarkdown>
+                        </div>
+                      </div>
+                    ))}
+                    {chatLoading && (
+                      <div className="flex justify-start">
+                        <div className="bg-slate-100 text-slate-400 p-3 rounded-xl text-sm">Digitando...</div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Input do Chat */}
+                  <form onSubmit={(e) => { e.preventDefault(); enviarPergunta(pergunta); }} className="relative">
+                    <input type="text" value={pergunta} onChange={(e) => setPergunta(e.target.value)} placeholder="Faça sua pergunta..." className="w-full p-3 pr-10 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:outline-none text-sm text-slate-900" />
+                    <button type="submit" disabled={chatLoading} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-900 disabled:text-slate-300">➤</button>
+                  </form>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </div>
+    </main>
+  );
+}

@@ -54,6 +54,29 @@ FORMATO DA SUA RESPOSTA:
         except Exception as err:
             return f"❌ Erro ao gerar relatório: {err}"
 
+    def responder_pergunta(self, dados_avaliados: dict, pergunta: str) -> str:
+        print(f"🧠 Agente 4: Respondendo pergunta do usuário...")
+        
+        system_prompt = """Você é o "AI Fundamental Analyst", um copiloto de investimentos. 
+O usuário fez uma pergunta sobre uma empresa que ele acabou de analisar.
+Use EXCLUSIVAMENTE os dados financeiros fornecidos no JSON para responder.
+Seja didático, direto e não invente números. Se a pergunta fugir do tema financeiro ou dos dados fornecidos, diga que só pode responder sobre a análise atual."""
+
+        user_prompt = f"Dados da análise:\n{json.dumps(dados_avaliados, indent=4, ensure_ascii=False)}\n\nPergunta do usuário: {pergunta}"
+
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                temperature=0.5
+            )
+            return response.choices[0].message.content
+        except Exception as err:
+            return f"❌ Erro ao responder: {err}"
+
 # Bloco de teste integrado (Agente 1 -> Agente 3 -> Agente 4)
 if __name__ == "__main__":
     from agent1_coletor import AgenteColetor
