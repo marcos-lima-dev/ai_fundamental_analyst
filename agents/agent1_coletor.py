@@ -8,10 +8,10 @@ class AgenteColetor:
 
     def _limpar_valor(self, texto):
         """Converte texto do Fundamentus (ex: '4,67', '10,30%') para número (4.67, 10.30)"""
-        if not texto or texto == '-' or texto == 'N/A':
+        if not texto or texto in ['-', 'N/A', '']:
             return None
         # Remove pontos de milhar, troca vírgula por ponto e remove o símbolo de %
-        texto = texto.replace('.', '').replace(',', '.').replace('%', '')
+        texto = str(texto).replace('.', '').replace(',', '.').replace('%', '').strip()
         try:
             return float(texto)
         except ValueError:
@@ -34,26 +34,26 @@ class AgenteColetor:
                 return None
 
             soup = BeautifulSoup(response.text, 'html.parser')
-            table = soup.find('table', {'class': 'w728'})
             
-            if not table:
-                print(f"❌ Agente 1: Ticker {ticker} não encontrado no Fundamentus.")
+            # NOVA LÓGICA ROBUSTA: Encontrar todas as células que são rótulos (labels)
+            labels = soup.find_all('td', class_='label')
+            if not labels:
+                print(f"❌ Agente 1: Ticker {ticker} não encontrado ou site mudou de estrutura.")
                 return None
 
             dados_brutos = {}
-            for row in table.find_all('tr'):
-                cells = row.find_all('td')
-                if len(cells) == 4:
-                    label1 = cells[0].text.strip()
-                    value1 = cells[1].text.strip()
-                    label2 = cells[2].text.strip()
-                    value2 = cells[3].text.strip()
-                    dados_brutos[label1] = value1
-                    dados_brutos[label2] = value2
-                elif len(cells) == 2:
-                    label1 = cells[0].text.strip()
-                    value1 = cells[1].text.strip()
-                    dados_brutos[label1] = value1
+            for label_td in labels:
+                # O texto do rótulo
+                label = label_td.get_text(strip=True).replace('\xa0', ' ')
+                # O valor está na próxima célula irmã (td)
+                value_td = label_td.find_next_sibling('td')
+                if value_td:
+                    value = value_td.get_text(strip=True).replace('\xa0', ' ')
+                    dados_brutos[label] = value
+
+            # Tratamento do Endividamento (Fundamentus manda como ratio ex: 0.83, multiplicamos por 100 para bater com as regras do Agente 3)
+            divida_ratio = self._limpar_valor(dados_brutos.get("Dív.Br/Patrim"))
+            divida_percent = divida_ratio * 100 if divida_ratio is not None else None
 
             dados_extraidos = {
                 "ticker": ticker,
@@ -71,7 +71,7 @@ class AgenteColetor:
                 "margem_liquida": self._limpar_valor(dados_brutos.get("Marg. Líquida")),
                 
                 # Endividamento
-                "divida_liquida_ebitda": self._limpar_valor(dados_brutos.get("Dív.Br/Patrim")),
+                "divida_liquida_ebitda": divida_percent,
                 
                 # Dividendos
                 "dividend_yield": self._limpar_valor(dados_brutos.get("Div.Yield")),
