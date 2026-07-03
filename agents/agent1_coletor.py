@@ -41,7 +41,6 @@ class AgenteColetor:
                 return None
 
             dados_brutos = {}
-            # O Fundamentus usa tabelas com 4 colunas (label, valor, label, valor)
             for row in table.find_all('tr'):
                 cells = row.find_all('td')
                 if len(cells) == 4:
@@ -56,12 +55,6 @@ class AgenteColetor:
                     value1 = cells[1].text.strip()
                     dados_brutos[label1] = value1
 
-            # Validando se o ticker digitado é o mesmo que apareceu na tela
-            if "Papel" not in dados_brutos or dados_brutos.get("Papel") != ticker:
-                print(f"❌ Agente 1: Ticker {ticker} inválido.")
-                return None
-
-            # Mapeando os nomes do Fundamentus para o nosso padrão
             dados_extraidos = {
                 "ticker": ticker,
                 "nome": dados_brutos.get("Empresa", ticker),
@@ -77,7 +70,7 @@ class AgenteColetor:
                 "roic": self._limpar_valor(dados_brutos.get("ROIC")),
                 "margem_liquida": self._limpar_valor(dados_brutos.get("Marg. Líquida")),
                 
-                # Endividamento (Dív.Br/Patrim é equivalente ao Debt/Equity que usávamos)
+                # Endividamento
                 "divida_liquida_ebitda": self._limpar_valor(dados_brutos.get("Dív.Br/Patrim")),
                 
                 # Dividendos
