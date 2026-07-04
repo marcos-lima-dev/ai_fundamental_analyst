@@ -172,13 +172,18 @@ export default function Home() {
     <main className="min-h-screen bg-slate-50 text-slate-800 p-4 sm:p-8 font-sans">
       <div className="max-w-6xl mx-auto">
         <header className="flex flex-col sm:flex-row justify-between items-center mb-10">
-          <div>
-            <h1 className="text-3xl font-bold text-slate-900 tracking-tight">AI Fundamental Analyst</h1>
-            <p className="text-slate-500 mt-1">Análise de ações guiada por inteligência artificial.</p>
-          </div>
-          <div className="mt-4 sm:mt-0 flex items-center gap-2 bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-full text-sm font-medium border border-emerald-100">
-            <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span> IA Ativa
-          </div>
+                  <div className="flex items-center gap-3 mb-4 sm:mb-0">
+                    <img src="/logo.png" alt="Logo" className="h-12 w-12 rounded-lg" />
+                    <div>
+                      <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight leading-none">
+                        AI Fundamental Analyst
+                      </h1>
+                      <p className="text-slate-500 text-sm mt-1">Análise de ações guiada por inteligência artificial.</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-full text-sm font-medium border border-emerald-100">
+                    <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span> IA Ativa
+                  </div>
         </header>
 
         <form onSubmit={buscarAnalise} className="flex flex-col sm:flex-row gap-2 mb-4 max-w-xl mx-auto">
