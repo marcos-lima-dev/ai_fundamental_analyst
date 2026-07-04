@@ -1,158 +1,168 @@
-from pathlib import Path
-
-readme_content = r"""# 📈 AI Fundamental Analyst
-
-## Seu Copiloto de Análise Fundamentalista com IA
-
-Analise empresas da B3 usando Inteligência Artificial, indicadores financeiros reais e agentes inteligentes.
-
-**Python • FastAPI • Next.js • OpenAI • License**
-
-⭐ **Star this repository** • 🚀 **Follow the development**
-
-> AI Fundamental Analyst Logo
+Este é o README.md oficial para o projeto **AI Fundamental Analyst**, estruturado para refletir a maturidade técnica e os padrões de engenharia de software de nível corporativo.
 
 ---
 
-# 🚀 Visão Geral
+# AI Fundamental Analyst 🚀
 
-O **AI Fundamental Analyst** é uma aplicação SaaS projetada para ajudar investidores a realizarem análises fundamentalistas de qualidade profissional utilizando Inteligência Artificial.
+<p align="center">
+  <img src="https://raw.githubusercontent.com/seu-usuario/seu-repositorio/main/frontend/public/logo.png" alt="AI Fundamental Analyst Logo" width="200">
+</p>
 
-Em vez de simplesmente exibir tabelas de indicadores financeiros, a aplicação comporta-se como uma equipe de analistas. O sistema garante a filosofia:
+### O Copiloto de Inteligência Artificial para Análise Fundamentalista de Ações da B3.
+
+[![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-009688.svg)](https://fastapi.tiangolo.com/)
+[![Next.js](https://img.shields.io/badge/Next.js-14-black.svg)](https://nextjs.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![OpenAI](https://img.shields.io/badge/AI-GPT--4o--mini-412991.svg)](https://openai.com/)
+
+---
+
+## 📋 Visão Geral
+
+O **AI Fundamental Analyst** resolve o gap crítico entre dados financeiros brutos e a tomada de decisão consciente. Atualmente, investidores enfrentam dois extremos: plataformas tradicionais repletas de indicadores complexos que exigem profundo conhecimento técnico, ou IAs genéricas que, apesar de fluídas, sofrem com alucinações matemáticas e falta de dados em tempo real.
+
+Este projeto foi criado para ser um **Copiloto de Análise**, transformando o caos de balanços patrimoniais e DREs em diagnósticos compreensíveis, didáticos e, acima de tudo, tecnicamente precisos.
+
+---
+
+## 🧠 Filosofia de Engenharia
 
 > **"Os números vêm do motor determinístico. A interpretação vem da IA."**
 
-Isso elimina alucinações matemáticas e gera relatórios confiáveis.
+Diferente de soluções que delegam cálculos à Inteligência Artificial, nossa arquitetura impõe uma separação rigorosa de responsabilidades (ADR-001). LLMs são excelentes redatores, mas péssimos matemáticos. Por isso, garantimos **100% de precisão matemática** através de um motor em Python, utilizando o LLM exclusivamente para traduzir dados estruturados (JSON) em linguagem natural narrativa.
 
 ---
 
-# ✨ Features
+## 🏗️ Arquitetura do Sistema
 
-- 📊 **Dashboard Premium:** Interface limpa, responsiva e animada com Framer Motion.
-- 🤖 **Pipeline Multi-Agente:** 4 agentes especializados trabalhando em sequência.
-- 🎯 **Score Fundamentalista:** Avaliação matemática de 0 a 10 baseada em regras clássicas.
-- 🩺 **Ficha Médica:** Barras de progresso para Saúde Financeira, Valuation, Crescimento, etc.
-- 🧠 **Relatório IA:** Tese de investimento gerada em linguagem natural, didática e acessível.
-- 💬 **Chat Contextual:** Tire dúvidas sobre a análise gerada diretamente com a IA.
-- 🔎 **Coleta Robusta:** Web scraping do Fundamentus para dados atualizados da B3.
+O sistema utiliza uma arquitetura **Client-Server desacoplada** com comunicação via API REST, otimizada para escalabilidade e manutenção modular.
+
+```mermaid
+graph TD
+    User((Usuário)) --> Frontend[Frontend Next.js]
+    Frontend --> Backend[Backend FastAPI]
+    subgraph Pipeline Multi-Agente
+        Backend --> Agente1[Agente 1: Coletor]
+        Agente1 --> Agente2[Agente 2: Calculador]
+        Agente2 --> Agente3[Agente 3: Avaliador]
+        Agente3 --> Agente4[Agente 4: Narrador IA]
+    end
+    Agente4 --> OpenAI[OpenAI API]
+    Agente4 --> Dashboard[Dashboard Render]
+```
 
 ---
 
-# 🧠 Arquitetura Multi-Agente
+## 🤖 Pipeline de Agentes Especializados
 
-O coração do backend é um pipeline orquestrado pelo FastAPI, onde cada agente tem uma responsabilidade única:
+Nossa espinha dorsal é um pipeline sequencial de 4 agentes (ADR-002), garantindo que cada etapa do processamento tenha uma responsabilidade estrita:
+
+1.  **Agente 1 - Coletor:** Realiza o web scraping robusto de dados brutos de fontes como Fundamentus e CVM.
+2.  **Agente 2 - Calculador:** Normaliza e transforma dados brutos em indicadores financeiros (ROE, P/L, CAGR).
+3.  **Agente 3 - Avaliador:** O "cérebro determinístico". Aplica regras de scoring baseadas em clássicos (Graham, Buffett) para gerar notas de 0 a 10 por categoria.
+4.  **Agente 4 - Narrador (IA):** Traduz o JSON estruturado do avaliador em um relatório Markdown completo, evitando qualquer improvisação numérica.
+
+---
+
+## ✨ Principais Funcionalidades
+
+| Funcionalidade | Descrição |
+| :--- | :--- |
+| **Diagnóstico 360°** | Análise instantânea de Rentabilidade, Valuation, Crescimento, Endividamento e Dividendos. |
+| **Score Fundamentalista** | Pontuação de 0 a 100 baseada em pesos estratégicos e lógica matemática pura. |
+| **Chat Contextual** | IA que responde perguntas específicas sobre o ticker, baseada estritamente nos dados coletados. |
+| **Visualização Premium** | Dashboard com gráficos radiais, barras de saúde animadas e interface responsiva. |
+
+---
+
+## 🛠️ Stack Tecnológica
+
+*   **Backend:** Python 3.11+, FastAPI (Orquestrador), BeautifulSoup4 (Scraping), Pydantic (Validação).
+*   **Frontend:** Next.js 14 (App Router), Tailwind CSS, Framer Motion (Animações), Recharts (Gráficos).
+*   **IA:** OpenAI GPT-4o-mini (Narrativa e Contexto).
+*   **Infraestrutura:** Render (API), Vercel (Frontend), UptimeRobot (Keep-alive).
+
+---
+
+## 📂 Estrutura do Projeto
 
 ```text
-            [ Requisição do Usuário ]
-                       │
-                       ▼
-        ┌──────────────────────────┐
-        │ Agente 1: Coletor        │  <-- Web Scraping (Fundamentus)
-        └──────────────────────────┘
-                       │
-                       ▼
-        ┌──────────────────────────┐
-        │ Agente 2: Calculador     │  <-- Normalização de Dados
-        └──────────────────────────┘
-                       │
-                       ▼
-        ┌──────────────────────────┐
-        │ Agente 3: Avaliador      │  <-- Regras Matemáticas e Score
-        └──────────────────────────┘
-                       │
-                       ▼
-        ┌──────────────────────────┐
-        │ Agente 4: Narrador (IA)  │  <-- GPT-4o-mini (OpenAI)
-        └──────────────────────────┘
-                       │
-                       ▼
-        [ Relatório + Chat em JSON ]
-🛠️ Tech Stack
-Backend
-Python 3.11+
-FastAPI (Servidor e Rotas)
-BeautifulSoup4 (Web Scraping do Fundamentus)
-OpenAI API (Agente Narrador)
-Pandas / Pydantic (Tratamento de dados)
-Frontend
-Next.js 14 (React)
-Tailwind CSS (Estilização SaaS)
-Framer Motion (Animações e Microinterações)
-Recharts (Gráfico Radial de Score)
-React Markdown (Renderização do relatório IA)
-📁 Estrutura do Projeto
-ai_fundamental_analyst/
-│
-├── agents/                # Lógica dos 4 Agentes
-│   ├── agent1_coletor.py  # Busca dados no Fundamentus
-│   ├── agent3_avaliador.py# Aplica regras e gera o Score
-│   └── agent4_narrador.py # Integra com OpenAI para gerar relatório
-│
-├── frontend/              # Aplicação Next.js
-│   ├── app/
-│   │   └── page.tsx       # Dashboard principal (UI)
-│   └── package.json
-│
-├── .env                   # Variáveis de ambiente (OPENAI_API_KEY)
-├── .gitignore
-├── main.py                # Entry point do FastAPI (Orquestrador)
-├── requirements.txt       # Dependências Python
+├── backend/
+│   ├── agents/           # Lógica dos 4 agentes especializados
+│   ├── main.py           # Endpoints FastAPI e orquestração
+│   └── requirements.txt  # Dependências Python
+├── frontend/
+│   ├── app/              # Next.js App Router e UI
+│   ├── components/       # Componentes React (Cards, Chat, Gráficos)
+│   └── tailwind.config.js
+├── docs/
+│   ├── ADR.md            # Architecture Decision Records
+│   └── PROJECT_MEMORY.md # Memória de engenharia permanente
 └── README.md
-⚙️ Instalação e Uso Local
-Clone o repositório
-git clone https://github.com/marcos-lima-dev/ai_fundamental_analyst.git
-cd ai_fundamental_analyst
-Configurando o Backend
-# Crie seu arquivo .env com a chave:
-# OPENAI_API_KEY=sk-...
+```
 
-python -m venv venv
+---
 
-source venv/bin/activate
+## 🚀 Instalação e Execução Local
 
-pip install -r requirements.txt
+### Backend
+1. Navegue até `/backend`.
+2. Crie um ambiente virtual: `python -m venv venv`.
+3. Instale as dependências: `pip install -r requirements.txt`.
+4. Configure sua `OPENAI_API_KEY` no arquivo `.env`.
+5. Execute: `uvicorn main:app --reload`.
 
-uvicorn main:app --reload
-Configurando o Frontend
-cd frontend
+### Frontend
+1. Navegue até `/frontend`.
+2. Instale os pacotes: `npm install`.
+3. Configure `NEXT_PUBLIC_API_URL` apontando para o seu backend local.
+4. Execute: `npm run dev`.
 
-npm install
+---
 
-npm run dev
+## 🖼️ Screenshots
 
-Acesse http://localhost:3000 no seu navegador.
+<p align="center">
+  <em>[Placeholder: Inserir imagem do Dashboard Principal com o Radial Score Chart]</em><br>
+  <em>[Placeholder: Inserir imagem do Chat Contextual e Relatório da IA]</em>
+</p>
 
-🎯 Roadmap
- MVP 1: Motor determinístico e cálculo de scores
- MVP 2: Dashboard Frontend com Gráficos e Chat IA
- Deploy em Produção (Backend no Render, Frontend na Vercel)
- Acordar Backend Automaticamente (Cron Job)
- MVP 3: Comparação de Ações lado a lado
- Análise de Setor (Melhores empresas por segmento)
- Modo Buffett (Analisar segundo princípios de Warren Buffett)
- Upload de Documentos (Relatórios de RI, Formulário de Referência)
-💡 Visão
+---
 
-O objetivo não é substituir o investidor.
+## 🗺️ Roadmap de Evolução
 
-O objetivo é dar a cada investidor acesso a uma equipe de IA capaz de ler, interpretar e explicar os fundamentos das empresas de forma clara e transparente.
+- [x] **MVP 1 & 2:** Pipeline Multi-agente e Dashboard funcional.
+- [ ] **MVP 3:** Comparação entre empresas (Side-by-side).
+- [ ] **MVP 4:** Análise setorial inteligente.
+- [ ] **MVP 5:** RAG Documental (Upload de Relatórios de RI e CVM).
+- [ ] **MVP 6:** Modo Buffett (Análise qualitativa profunda).
 
-Pense nisso como ter sua própria equipe de equity research digital disponível 24/7.
+---
 
-🤝 Contribuindo
+## 📐 Engenharia e Qualidade
 
-Contribuições são bem-vindas! Sinta-se à vontade para abrir Issues ou enviar Pull Requests com melhorias para as regras de avaliação, design ou novos agentes.
+Este projeto é guiado por uma **Documentação Viva**, garantindo que cada decisão técnica seja rastreável:
 
-📜 Licença
+*   **[ADR (Architecture Decision Records)](06%20-%20ADR.md%20(Architecture%20Decision%20Records):** Registro formal de decisões como a troca do Yahoo Finance pelo Fundamentus (ADR-007) e o uso de JSON como contrato estrito (ADR-003).
+*   **[PROJECT_MEMORY.md](05%20-%20%F0%9F%A7%A0%20PROJECT_MEMORY.md):** Histórico de engenharia, dívidas técnicas e regras que nunca devem ser quebradas (ex: "A IA nunca calcula").
 
-Distribuído sob a Licença MIT.
+---
 
-<div align="center">
+## 🤝 Contribuição
 
-Made with ❤️ by Marcos S. Lima
+Contribuições são bem-vindas! Para grandes mudanças, abra uma *issue* primeiro para discutir o que você gostaria de alterar.
+1. Faça um Fork do projeto.
+2. Crie uma Branch para sua Feature (`git checkout -b feature/NovaFeature`).
+3. Dê Commit em suas mudanças (`git commit -m 'Adicionando nova feature'`).
+4. Faça o Push para a Branch (`git push origin feature/NovaFeature`).
+5. Abra um Pull Request.
 
-</div> """
+---
 
-Path("README.md").write_text(readme_content, encoding="utf-8")
+## 📄 Licença
 
-print("✅ README.md criado com sucesso!")
+Distribuído sob a licença MIT. Veja `LICENSE` para mais informações.
+
+---
+**AI Fundamental Analyst** é mais do que um aplicativo; é um estudo sobre arquitetura de software, Inteligência Artificial e engenharia de contexto aplicada ao mercado financeiro.
